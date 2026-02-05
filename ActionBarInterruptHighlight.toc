@@ -1,0 +1,10 @@
+## Interface: 120000
+## Title: Action Bar Interrupt Highlight
+## Notes: Highlight interrupts on action bars for target casts
+## IconTexture: Interface\Icons\ability_kick
+## Version: @project-version@
+## Author: Xodiv-Nagrand
+## Email: mib@post.com
+
+Overlay.xml
+Controller.xml
