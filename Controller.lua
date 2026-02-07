@@ -39,6 +39,8 @@ local Events = {
     'UNIT_SPELLCAST_STOP',
 }
 
+local CooldownViewerNames = { "EssentialCooldownViewer", "UtilityCooldownViewer", }
+
 --[[------------------------------------------------------------------------]]--
 
 local function GetAllActionButtons()
@@ -46,13 +48,28 @@ local function GetAllActionButtons()
 
     -- Blizzard
     for _, actionButton in pairs(ActionBarButtonEventsFrame.frames) do
-        buttons[actionButton] = actionButton.action
+        local _, spellID = GetActionInfo(actionButton.action)
+        buttons[actionButton] = spellID
+    end
+
+    -- CDM
+    for _, viewerName in ipairs(CooldownViewerNames) do
+        local viewer = _G[viewerName]
+        for i, itemFrame in ipairs(viewer:GetItemFrames()) do
+            if itemFrame.cooldownID then
+                local info = C_CooldownViewer.GetCooldownViewerCooldownInfo(itemFrame.cooldownID)
+                if info then
+                    buttons[itemFrame] = info.spellID
+                end
+            end
+        end
     end
 
     -- Dominos
     if Dominos then
         for actionButton in pairs(Dominos.ActionButtons.buttons) do
-            buttons[actionButton] = actionButton.action
+            local _, spellID = GetActionInfo(actionButton.action)
+            buttons[actionButton] = spellID
         end
     end
 
@@ -63,7 +80,8 @@ local function GetAllActionButtons()
             for actionButton in pairs(lib:GetAllButtons()) do
                 local actionType, action = actionButton:GetAction()
                 if actionType == "action" then
-                    buttons[actionButton] = action
+                    local _, spellID = GetActionInfo(actionButton.action)
+                    buttons[actionButton] = spellID
                 end
             end
         end
@@ -84,6 +102,15 @@ function ABIHControllerMixin:Initialize()
     self.overlayPool = CreateFramePool('Frame', nil, "ABIHOverlayTemplate")
 
     FrameUtil.RegisterFrameForEvents(self, Events)
+
+    -- This fires fairly often and causes a full rebuild of all the cooldown
+    -- viewer itemFrames. Very inefficient compared to the actionbars.
+
+    EventRegistry:RegisterCallback("CooldownViewerSettings.OnDataChanged",
+        function ()
+            self:CreateOverlays()
+            self:Update('target')
+        end)
 end
 
 function ABIHControllerMixin:IsRelevantActionID(actionID)
@@ -92,7 +119,7 @@ function ABIHControllerMixin:IsRelevantActionID(actionID)
         return true
     end
     for overlay in self.overlayPool:EnumerateActive() do
-        if overlay.action == actionID then
+        if overlay.spellID == spellID then
             return true
         end
     end
@@ -101,11 +128,10 @@ end
 
 function ABIHControllerMixin:CreateOverlays()
     self.overlayPool:ReleaseAll()
-    for actionButton, action in pairs(GetAllActionButtons()) do
-        local _, spellID = GetActionInfo(action)
+    for actionButton, spellID in pairs(GetAllActionButtons()) do
         if Interrupts[spellID] then
             local overlay = self.overlayPool:Acquire()
-            overlay.action = action
+            overlay.spellID = spellID
             overlay:Attach(actionButton)
         end
     end
@@ -151,7 +177,7 @@ function ABIHControllerMixin:OnEvent(event, ...)
         end
     elseif event == 'PLAYER_TARGET_CHANGED' then
         self:Update('target')
-    else
+    elseif event:sub(1, 14) == 'UNIT_SPELLCAST' then
         local unit = ...
         if unit == 'target' then
             self:Update(unit)
