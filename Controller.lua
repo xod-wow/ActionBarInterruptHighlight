@@ -113,6 +113,8 @@ function ABIHControllerMixin:OnEvent(event, ...)
             self:CreateOverlays()
             self:Update('target')
         end
+    elseif event == 'PLAYER_TARGET_CHANGED' then
+        self:Update('target')
     else
         local unit = ...
         if unit == 'target' then
