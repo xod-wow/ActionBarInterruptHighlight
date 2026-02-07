@@ -2,6 +2,7 @@ exclude_files = {
     ".git",
     ".github",
     ".luacheckrc",
+    "Libs",
 }
 
 -- https://luacheck.readthedocs.io/en/stable/warnings.html
@@ -22,9 +23,11 @@ read_globals =  {
     "C_SpellActivationOverlay",
     "CreateColor",
     "CreateFramePool",
+    "Dominos",
     "Enum",
     "FrameUtil",
     "GetActionInfo",
+    "LibStub",
     "PixelUtil",
     "UnitCastingDuration",
     "UnitCastingInfo",

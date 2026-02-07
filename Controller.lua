@@ -39,6 +39,41 @@ local Events = {
     'UNIT_SPELLCAST_STOP',
 }
 
+--[[------------------------------------------------------------------------]]--
+
+local function GetAllActionButtons()
+    local buttons = {}
+
+    -- Blizzard
+    for _, actionButton in pairs(ActionBarButtonEventsFrame.frames) do
+        buttons[actionButton] = actionButton.action
+    end
+
+    -- Dominos
+    if Dominos then
+        for actionButton in pairs(Dominos.ActionButtons.buttons) do
+            buttons[actionButton] = actionButton.action
+        end
+    end
+
+    -- LibActionButton variants
+    -- The %- here is a literal "-"
+    for name, lib in LibStub:IterateLibraries() do
+        if name:match('^LibActionButton%-1.0') then
+            for actionButton in pairs(lib:GetAllButtons()) do
+                local actionType, action = actionButton:GetAction()
+                if actionType == "action" then
+                    buttons[actionButton] = action
+                end
+            end
+        end
+    end
+
+    return buttons
+end
+
+--[[------------------------------------------------------------------------]]--
+
 ABIHControllerMixin = {}
 
 function ABIHControllerMixin:OnLoad()
@@ -57,7 +92,7 @@ function ABIHControllerMixin:IsRelevantActionID(actionID)
         return true
     end
     for overlay in self.overlayPool:EnumerateActive() do
-        if overlay:GetParent().action == actionID then
+        if overlay.action == actionID then
             return true
         end
     end
@@ -66,10 +101,11 @@ end
 
 function ABIHControllerMixin:CreateOverlays()
     self.overlayPool:ReleaseAll()
-    for _, actionButton in pairs(ActionBarButtonEventsFrame.frames) do
-        local _, spellID = GetActionInfo(actionButton.action)
+    for actionButton, action in pairs(GetAllActionButtons()) do
+        local _, spellID = GetActionInfo(action)
         if Interrupts[spellID] then
             local overlay = self.overlayPool:Acquire()
+            overlay.action = action
             overlay:Attach(actionButton)
         end
     end

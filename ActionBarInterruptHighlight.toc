@@ -7,5 +7,7 @@
 ## Email: mib@post.com
 ## X-Curse-Project-ID: 1454492
 
+embeds.xml
+
 Overlay.xml
 Controller.xml
