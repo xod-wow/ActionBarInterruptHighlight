@@ -5,6 +5,8 @@
 
 ----------------------------------------------------------------------------]]--
 
+local _, addon = ...
+
 local Interrupts = {
     [ 47528] = true,                -- Mind Freeze (Death Knight)
     [183752] = true,                -- Disrupt (Demon Hunter)
@@ -55,7 +57,7 @@ local function GetAllActionButtons()
     -- CDM
     for _, viewerName in ipairs(CooldownViewerNames) do
         local viewer = _G[viewerName]
-        for i, itemFrame in ipairs(viewer:GetItemFrames()) do
+        for _, itemFrame in ipairs(viewer:GetItemFrames()) do
             if itemFrame.cooldownID then
                 local info = C_CooldownViewer.GetCooldownViewerCooldownInfo(itemFrame.cooldownID)
                 if info then
@@ -78,7 +80,7 @@ local function GetAllActionButtons()
     for name, lib in LibStub:IterateLibraries() do
         if name:match('^LibActionButton%-1.0') then
             for actionButton in pairs(lib:GetAllButtons()) do
-                local actionType, action = actionButton:GetAction()
+                local actionType, _action = actionButton:GetAction()
                 if actionType == "action" then
                     local _, spellID = GetActionInfo(actionButton.action)
                     buttons[actionButton] = spellID
@@ -99,6 +101,9 @@ function ABIHControllerMixin:OnLoad()
 end
 
 function ABIHControllerMixin:Initialize()
+    addon.InitializeOptions()
+    addon.db.RegisterCallback(self, 'OnOptionsChanged', 'OnOptionsChanged')
+
     self.overlayPool = CreateFramePool('Frame', nil, "ABIHOverlayTemplate")
 
     FrameUtil.RegisterFrameForEvents(self, Events)
@@ -156,11 +161,17 @@ function ABIHControllerMixin:Update(unit)
     name, _, _, _, _, _, notInterruptible = UnitChannelInfo(unit)
     if name then
         local duration = UnitChannelDuration(unit)
+        -- or UnitEmpoweredChannelDuration(unit)
         self:RefreshOverlays(true, notInterruptible, duration)
         return
     end
 
     self:RefreshOverlays(false)
+end
+
+function ABIHControllerMixin:OnOptionsChanged()
+    self:CreateOverlays()
+    self:Update('target')
 end
 
 function ABIHControllerMixin:OnEvent(event, ...)
