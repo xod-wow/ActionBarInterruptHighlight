@@ -150,21 +150,23 @@ function ABIHControllerMixin:RefreshOverlays(isActive, notInterruptible, duratio
 end
 
 function ABIHControllerMixin:Update(unit)
-    local name, notInterruptible, _
+    if UnitCanAttack('player', unit) then
+        local name, notInterruptible, _
 
-    name, _, _, _, _, _, _, notInterruptible = UnitCastingInfo(unit)
-    if name then
-        local duration = UnitCastingDuration(unit)
-        self:RefreshOverlays(true, notInterruptible, duration)
-        return
-    end
+        name, _, _, _, _, _, _, notInterruptible = UnitCastingInfo(unit)
+        if name then
+            local duration = UnitCastingDuration(unit)
+            self:RefreshOverlays(true, notInterruptible, duration)
+            return
+        end
 
-    name, _, _, _, _, _, notInterruptible = UnitChannelInfo(unit)
-    if name then
-        local duration = UnitChannelDuration(unit)
-        -- or UnitEmpoweredChannelDuration(unit)
-        self:RefreshOverlays(true, notInterruptible, duration)
-        return
+        name, _, _, _, _, _, notInterruptible = UnitChannelInfo(unit)
+        if name then
+            local duration = UnitChannelDuration(unit)
+            -- or UnitEmpoweredChannelDuration(unit)
+            self:RefreshOverlays(true, notInterruptible, duration)
+            return
+        end
     end
 
     self:RefreshOverlays(false)
