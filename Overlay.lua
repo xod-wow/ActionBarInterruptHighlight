@@ -12,6 +12,43 @@ timerColorCurve:AddPoint(3.0, CreateColor(1, 1, 0.5, 1))
 timerColorCurve:AddPoint(3.01, CreateColor(1, 1, 1, 1))
 timerColorCurve:AddPoint(10.0, CreateColor(1, 1, 1, 1))
 
+--[[------------------------------------------------------------------------]]--
+
+-- This is wrong for any kind of complex macro that contains multiple commands
+-- that execute, or one command that executes and has no conditions but then
+-- subsequent commands with conditions that don't. But it should be good enough
+-- for basic macros that do CC and interrupts, and a full macro parser would be
+-- complex. And not significantly better since you can't tell what spell is
+-- going to end the macro from the client.
+
+-- I tried caching the gmatch split but it wasn't any faster.
+
+local CAST_COMMANDS = {
+    [SLASH_CAST1]   = true,
+    [SLASH_CAST2]   = true,
+    [SLASH_CAST3]   = true,
+    [SLASH_CAST4]   = true,
+    [SLASH_USE1]    = true,
+    [SLASH_USE2]    = true,
+}
+
+local function GetMacroUnit(macroIdentifier)
+    local macroBody = GetMacroBody(macroIdentifier)
+    if macroBody == nil then return end
+
+    for cmd, conditionsAndArgs in macroBody:gmatch("(/%w+)%s+([^\n]+)") do
+        if CAST_COMMANDS[cmd] then
+            local result, unit = SecureCmdOptionParse(conditionsAndArgs)
+            if result then
+                return unit
+            end
+        end
+    end
+end
+
+
+--[[------------------------------------------------------------------------]]--
+
 ABIHOverlayMixin = {}
 
 function ABIHOverlayMixin:OnHide()
@@ -49,6 +86,32 @@ function ABIHOverlayMixin:StopTimer()
     self.duration = nil
     self.Timer:Hide()
     self:SetScript('OnUpdate', nil)
+end
+
+-- In an ideal world GetActionInfo would return the unit as well. Or there
+-- would be a GetActionUnit function. This is a hack to try to figure it
+-- out in a limited fashion. If this returns something that's not in
+-- self:GetTrackedUnits() we could be in trouble.
+
+function ABIHOverlayMixin:GetCurrentUnit()
+    local parent = self:GetParent()
+
+    if GetActionInfo(parent.action) == 'macro' then
+        local macroName = GetActionText(parent.action)
+        local unit = GetMacroUnit(macroName)
+        if unit then
+            return unit
+        end
+    end
+
+    if C_ActionBar.IsHarmfulAction(parent.action, true) then
+        -- "Focus Cast Key" from "Combat" settings.
+        if IsModifiedClick('FOCUSCAST') then
+            return 'focus'
+        end
+    end
+
+    return 'target'
 end
 
 -- Because notInterruptible is a secret, we can no longer show/hide

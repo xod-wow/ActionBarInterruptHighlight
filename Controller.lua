@@ -29,6 +29,7 @@ local Interrupts = {
 
 local Events = {
     'ACTIONBAR_SLOT_CHANGED',
+    'PLAYER_FOCUS_CHANGED',
     'PLAYER_TARGET_CHANGED',
     'UNIT_SPELLCAST_CHANNEL_START',
     'UNIT_SPELLCAST_CHANNEL_STOP',
@@ -107,6 +108,8 @@ function ABIHControllerMixin:Initialize()
 
     self.overlayPool = CreateFramePool('Frame', nil, "ABIHOverlayTemplate")
 
+    self.state = {}
+
     FrameUtil.RegisterFrameForEvents(self, Events)
 
     -- This fires fairly often and causes a full rebuild of all the cooldown
@@ -143,20 +146,24 @@ function ABIHControllerMixin:CreateOverlays()
     end
 end
 
-function ABIHControllerMixin:RefreshOverlays(isActive, notInterruptible, duration)
+function ABIHControllerMixin:RefreshOverlays()
     for overlay in self.overlayPool:EnumerateActive() do
-        overlay:Update(isActive, notInterruptible, duration)
+        local unit = overlay:GetCurrentUnit()
+        local state = self.state[unit]
+        if state then
+            overlay:Update(unpack(state))
+        end
    end
 end
 
-function ABIHControllerMixin:Update(unit)
+function ABIHControllerMixin:UpdateUnitState(unit)
     if UnitCanAttack('player', unit) then
         local name, notInterruptible, _
 
         name, _, _, _, _, _, _, notInterruptible = UnitCastingInfo(unit)
         if name then
             local duration = UnitCastingDuration(unit)
-            self:RefreshOverlays(true, notInterruptible, duration)
+            self.state[unit] = { true, notInterruptible, duration }
             return
         end
 
@@ -164,36 +171,45 @@ function ABIHControllerMixin:Update(unit)
         if name then
             local duration = UnitChannelDuration(unit)
             -- or UnitEmpoweredChannelDuration(unit)
-            self:RefreshOverlays(true, notInterruptible, duration)
+            self.state[unit] = { true, notInterruptible, duration }
             return
         end
     end
+    self.state[unit] = { false }
+end
 
-    self:RefreshOverlays(false)
+function ABIHControllerMixin:Update(...)
+    for i = 1, select('#', ...) do
+        local unit = select(i, ...)
+        self:UpdateUnitState(unit)
+    end
+    self:RefreshOverlays()
 end
 
 function ABIHControllerMixin:OnOptionsChanged()
     self:CreateOverlays()
-    self:Update('target')
+    self:Update('focus', 'target')
 end
 
 function ABIHControllerMixin:OnEvent(event, ...)
     if event == 'PLAYER_LOGIN' then
         self:Initialize()
         self:CreateOverlays()
-        self:Update('target')
+        self:Update('focus', 'target')
     elseif event == 'ACTIONBAR_SLOT_CHANGED' then
         -- This fires CONSTANTLY when assistedcombat is on a bar
         local actionID = ...
         if self:IsRelevantActionID(actionID) then
             self:CreateOverlays()
-            self:Update('target')
+            self:Update('focus', 'target')
         end
     elseif event == 'PLAYER_TARGET_CHANGED' then
         self:Update('target')
+    elseif event == 'PLAYER_FOCUS_CHANGED' then
+        self:Update('focus')
     elseif event:sub(1, 14) == 'UNIT_SPELLCAST' then
         local unit = ...
-        if unit == 'target' then
+        if unit == 'focus' or unit == 'target' then
             self:Update(unit)
         end
     end
