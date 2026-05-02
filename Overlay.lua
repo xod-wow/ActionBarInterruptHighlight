@@ -90,24 +90,25 @@ end
 
 -- In an ideal world GetActionInfo would return the unit as well. Or there
 -- would be a GetActionUnit function. This is a hack to try to figure it
--- out in a limited fashion. If this returns something that's not in
--- self:GetTrackedUnits() we could be in trouble.
+-- out in a limited fashion.
 
 function ABIHOverlayMixin:GetCurrentUnit()
     local parent = self:GetParent()
 
-    if GetActionInfo(parent.action) == 'macro' then
-        local macroName = GetActionText(parent.action)
-        local unit = GetMacroUnit(macroName)
-        if unit then
-            return unit
+    if parent.action then
+        if GetActionInfo(parent.action) == 'macro' then
+            local macroName = GetActionText(parent.action)
+            local unit = GetMacroUnit(macroName)
+            if unit then
+                return unit
+            end
         end
-    end
 
-    if C_ActionBar.IsHarmfulAction(parent.action, true) then
-        -- "Focus Cast Key" from "Combat" settings.
-        if IsModifiedClick('FOCUSCAST') then
-            return 'focus'
+        if C_ActionBar.IsHarmfulAction(parent.action, true) then
+            -- "Focus Cast Key" from "Combat" settings.
+            if IsModifiedClick('FOCUSCAST') then
+                return 'focus'
+            end
         end
     end
 
