@@ -7,6 +7,10 @@
 
 local _, addon = ...
 
+-- Note about warlocks: the interrupt pet abilities are the override spell
+-- for Command Demon (119898): not the spell the pet casts, but the spell the
+-- player casts to make the pet cast their spell.
+
 local Interrupts = {
     [ 47528] = true,                -- Mind Freeze (Death Knight)
     [183752] = true,                -- Disrupt (Demon Hunter)
@@ -22,7 +26,7 @@ local Interrupts = {
     [ 57994] = true,                -- Wind Shear (Shaman)
     [119910] = true,                -- Spell Lock (Warlock Felhunter Pet)
     [132409] = true,                -- Spell Lock (Warlock Fel Ravager)
-    [ 89766] = true,                -- Axe Toss (Warlock Felguard Pet)
+    [119914] = true,                -- Axe Toss (Warlock Felguard Pet)
     [  6552] = true,                -- Pummel (Warrior)
     [351338] = true,                -- Quell (Evoker)
 }
