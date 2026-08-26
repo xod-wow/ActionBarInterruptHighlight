@@ -54,42 +54,46 @@ local CooldownViewerNames = { "EssentialCooldownViewer", "UtilityCooldownViewer"
 local function GetAllActionButtons()
     local buttons = {}
 
-    -- Blizzard
-    for _, actionButton in pairs(ActionBarButtonEventsFrame.frames) do
-        local _, spellID = GetActionInfo(actionButton.action)
-        buttons[actionButton] = spellID
-    end
+    if addon.db.profile.enableActionBars then
+        -- Blizzard
+        for _, actionButton in pairs(ActionBarButtonEventsFrame.frames) do
+            local _, spellID = GetActionInfo(actionButton.action)
+            buttons[actionButton] = spellID
+        end
 
-    -- CDM
-    for _, viewerName in ipairs(CooldownViewerNames) do
-        local viewer = _G[viewerName]
-        for _, itemFrame in ipairs(viewer:GetItemFrames()) do
-            if itemFrame.cooldownID then
-                local info = C_CooldownViewer.GetCooldownViewerCooldownInfo(itemFrame.cooldownID)
-                if info then
-                    buttons[itemFrame] = info.spellID
+        -- Dominos
+        if Dominos then
+            for actionButton in pairs(Dominos.ActionButtons.buttons) do
+                local _, spellID = GetActionInfo(actionButton.action)
+                buttons[actionButton] = spellID
+            end
+        end
+
+        -- LibActionButton variants
+        -- The %- here is a literal "-"
+        for name, lib in LibStub:IterateLibraries() do
+            if name:match('^LibActionButton%-1.0') then
+                for actionButton in pairs(lib:GetAllButtons()) do
+                    local actionType, _action = actionButton:GetAction()
+                    if actionType == "action" then
+                        local _, spellID = GetActionInfo(actionButton.action)
+                        buttons[actionButton] = spellID
+                    end
                 end
             end
         end
     end
 
-    -- Dominos
-    if Dominos then
-        for actionButton in pairs(Dominos.ActionButtons.buttons) do
-            local _, spellID = GetActionInfo(actionButton.action)
-            buttons[actionButton] = spellID
-        end
-    end
-
-    -- LibActionButton variants
-    -- The %- here is a literal "-"
-    for name, lib in LibStub:IterateLibraries() do
-        if name:match('^LibActionButton%-1.0') then
-            for actionButton in pairs(lib:GetAllButtons()) do
-                local actionType, _action = actionButton:GetAction()
-                if actionType == "action" then
-                    local _, spellID = GetActionInfo(actionButton.action)
-                    buttons[actionButton] = spellID
+    if addon.db.profile.enableCooldownManager then
+        -- CDM
+        for _, viewerName in ipairs(CooldownViewerNames) do
+            local viewer = _G[viewerName]
+            for _, itemFrame in ipairs(viewer:GetItemFrames()) do
+                if itemFrame.cooldownID then
+                    local info = C_CooldownViewer.GetCooldownViewerCooldownInfo(itemFrame.cooldownID)
+                    if info then
+                        buttons[itemFrame] = info.spellID
+                    end
                 end
             end
         end

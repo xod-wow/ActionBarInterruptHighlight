@@ -5,12 +5,17 @@
 
 ----------------------------------------------------------------------------]]--
 
+local _, addon = ...
+
+--[[------------------------------------------------------------------------]]--
+
 local timerColorCurve = C_CurveUtil.CreateColorCurve()
 timerColorCurve:SetType(Enum.LuaCurveType.Linear)
 timerColorCurve:AddPoint(0.0, CreateColor(1, 0.5, 0.5, 1))
 timerColorCurve:AddPoint(3.0, CreateColor(1, 1, 0.5, 1))
 timerColorCurve:AddPoint(3.01, CreateColor(1, 1, 1, 1))
 timerColorCurve:AddPoint(10.0, CreateColor(1, 1, 1, 1))
+
 
 --[[------------------------------------------------------------------------]]--
 
@@ -57,7 +62,7 @@ function ABIHOverlayMixin:OnHide()
 end
 
 function ABIHOverlayMixin:OnUpdate()
-    if self.duration then
+    if self.duration and addon.db.profile.enableTimer then
         local color = self.duration:EvaluateRemainingDuration(timerColorCurve)
         self.Timer:SetFormattedText("%0.1f", self.duration:GetRemainingDuration())
         self.Timer:SetTextColor(color:GetRGB())

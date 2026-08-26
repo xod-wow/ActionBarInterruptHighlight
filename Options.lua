@@ -13,6 +13,7 @@ local defaults = {
     profile = {
         enableActionBars = true,
         enableCooldownManager = true,
+        enableTimer = true,
     },
     char = {
     },
@@ -51,11 +52,26 @@ local options = {
                     addon.db.callbacks:Fire('OnOptionsChanged')
                 end,
         },
+        enableTimer = {
+            type = "toggle",
+            name = "Also show timer on highlighted buttons.",
+            width = "full",
+            order = 30,
+            get =
+                function ()
+                    return addon.db.profile.enableTimer
+                end,
+            set =
+                function (_, v)
+                    addon.db.profile.enableTimer = v
+                    addon.db.callbacks:Fire('OnOptionsChanged')
+                end,
+        },
     },
 }
 
 function addon.InitializeOptions()
-    addon.db = LibStub("AceDB-3.0"):New("ActionBarInterruptHighlight", defaults, true)
+    addon.db = LibStub("AceDB-3.0"):New("ActionBarInterruptHighlightDB", defaults, true)
 
     -- A convenience so other things just listen for OnOptionsChanged
     local function refire() addon.db.callbacks:Fire('OnOptionsChanged') end
