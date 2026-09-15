@@ -16,6 +16,12 @@ timerColorCurve:AddPoint(3.0, CreateColor(1, 1, 0.5, 1))
 timerColorCurve:AddPoint(3.01, CreateColor(1, 1, 1, 1))
 timerColorCurve:AddPoint(10.0, CreateColor(1, 1, 1, 1))
 
+local timerFormatter = C_StringUtil.CreateNumericRuleFormatter()
+timerFormatter:ClearBreakpoints()
+timerFormatter:AddBreakpoint({ threshold = 0, format = "%0.1f" })
+timerFormatter:AddBreakpoint({ threshold = 3, format = "%d" })
+timerFormatter:AddBreakpoint({ threshold = 10, format = "*" })
+
 
 --[[------------------------------------------------------------------------]]--
 
@@ -61,14 +67,12 @@ function ABIHOverlayMixin:OnHide()
     self:StopTimer()
 end
 
-function ABIHOverlayMixin:OnUpdate()
-    if self.duration and addon.db.profile.enableTimer then
-        local color = self.duration:EvaluateRemainingDuration(timerColorCurve)
-        self.Timer:SetFormattedText("%0.1f", self.duration:GetRemainingDuration())
-        self.Timer:SetTextColor(color:GetRGB())
-    else
-        self:StopTimer()
-    end
+function ABIHOverlayMixin:OnLoad()
+    self.binding = C_DurationUtil.CreateDurationTextBinding()
+    self.binding:SetFontString(self.Timer)
+    self.binding:SetTextColorCurve(timerColorCurve, 0)
+    self.binding:SetFormatter(timerFormatter)
+    self.binding:SetEnabled(false)
 end
 
 function ABIHOverlayMixin:StopAnim()
@@ -82,15 +86,16 @@ function ABIHOverlayMixin:StartAnim()
 end
 
 function ABIHOverlayMixin:StartTimer(duration)
-    self.duration = duration
-    self.Timer:Show()
-    self:SetScript('OnUpdate', self.OnUpdate)
+    if addon.db.profile.enableTimer then
+        self.binding:SetDuration(duration)
+        self.binding:SetEnabled(true)
+        self.Timer:Show()
+    end
 end
 
 function ABIHOverlayMixin:StopTimer()
-    self.duration = nil
+    self.binding:SetEnabled(false)
     self.Timer:Hide()
-    self:SetScript('OnUpdate', nil)
 end
 
 -- In an ideal world GetActionInfo would return the unit as well. Or there
@@ -144,10 +149,4 @@ function ABIHOverlayMixin:Attach(actionButton)
     local w, h = actionButton:GetSize()
     PixelUtil.SetSize(self, w, h)
     self.ProcLoopFlipbook:SetSize(w * 1.4, h * 1.4)
-end
-
-function ABIHOverlayMixin:AlreadyOverlayed()
-    local parent = self:GetParent()
-    local _, spellID = GetActionInfo(parent.action)
-    return spellID and C_SpellActivationOverlay.IsSpellOverlayed(spellID)
 end

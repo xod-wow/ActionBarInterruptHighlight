@@ -24,6 +24,7 @@
     </Animations>
     <Scripts>
       <OnHide method="OnHide" />
+      <OnLoad method="OnLoad" />
     </Scripts>
   </Frame>
 

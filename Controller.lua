@@ -10,6 +10,11 @@ local _, addon = ...
 -- Note about warlocks: the interrupt pet abilities are the override spell
 -- for Command Demon (119898): not the spell the pet casts, but the spell the
 -- player casts to make the pet cast their spell.
+--
+-- These are only used for CDM, actions can use C_ActionBar.IsInterruptAction.
+-- It's likely that this should be scanned from the action bars, on the
+-- assumption that even if you are looking at the CDM your bar has the interrupt
+-- on it.
 
 local Interrupts = {
     [ 47528] = true,                -- Mind Freeze (Death Knight)
@@ -54,51 +59,58 @@ local CooldownViewerNames = { "EssentialCooldownViewer", "UtilityCooldownViewer"
 local function GetAllActionButtons()
     local buttons = {}
 
-    if addon.db.profile.enableActionBars then
-        -- Blizzard
-        for _, actionButton in pairs(ActionBarButtonEventsFrame.frames) do
-            local _, spellID = GetActionInfo(actionButton.action)
-            buttons[actionButton] = spellID
-        end
+    -- Blizzard
+    for _, actionButton in pairs(ActionBarButtonEventsFrame.frames) do
+        buttons[actionButton] = actionButton.action
+    end
 
-        -- Dominos
-        if Dominos then
-            for actionButton in pairs(Dominos.ActionButtons.buttons) do
-                local _, spellID = GetActionInfo(actionButton.action)
-                buttons[actionButton] = spellID
+    -- Dominos
+    if Dominos then
+        for actionButton in pairs(Dominos.ActionButtons.buttons) do
+            buttons[actionButton] = actionButton.action
+        end
+    end
+
+    -- EllesmereUI, hostile to other addons due to AI slopcode
+    if EABActionButtonController then
+        for i = 1, 180 do
+            local actionButton = _G["EABButton"..i]
+            if actionButton then
+                local action = actionButton:GetAttribute("action")
+                buttons[actionButton] = action
             end
         end
+    end
 
-        -- LibActionButton variants
-        -- The %- here is a literal "-"
-        for name, lib in LibStub:IterateLibraries() do
-            if name:match('^LibActionButton%-1.0') then
-                for actionButton in pairs(lib:GetAllButtons()) do
-                    local actionType, _action = actionButton:GetAction()
-                    if actionType == "action" then
-                        local _, spellID = GetActionInfo(actionButton.action)
-                        buttons[actionButton] = spellID
-                    end
+    -- LibActionButton variants
+    -- The %- here is a literal "-"
+    for name, lib in LibStub:IterateLibraries() do
+        if name:match('^LibActionButton%-1.0') then
+            for actionButton in pairs(lib:GetAllButtons()) do
+                local actionType, _action = actionButton:GetAction()
+                if actionType == "action" then
+                    buttons[actionButton] = actionButton.action
                 end
             end
         end
     end
 
-    if addon.db.profile.enableCooldownManager then
-        -- CDM
-        for _, viewerName in ipairs(CooldownViewerNames) do
-            local viewer = _G[viewerName]
-            for _, itemFrame in ipairs(viewer:GetItemFrames()) do
-                if itemFrame.cooldownID then
-                    local info = C_CooldownViewer.GetCooldownViewerCooldownInfo(itemFrame.cooldownID)
-                    if info then
-                        buttons[itemFrame] = info.spellID
-                    end
+    return buttons
+end
+
+local function GetAllCDMButtons()
+    local buttons = {}
+    for _, viewerName in ipairs(CooldownViewerNames) do
+        local viewer = _G[viewerName]
+        for _, itemFrame in ipairs(viewer:GetItemFrames()) do
+            if itemFrame.cooldownID then
+                local info = C_CooldownViewer.GetCooldownViewerCooldownInfo(itemFrame.cooldownID)
+                if info then
+                    buttons[itemFrame] = info.spellID
                 end
             end
         end
     end
-
     return buttons
 end
 
@@ -130,13 +142,14 @@ function ABIHControllerMixin:Initialize()
         end)
 end
 
+-- This tests not only "is this an interrupt" but "was this an interrupt
+-- before and now isn't".
 function ABIHControllerMixin:IsRelevantActionID(actionID)
-    local _, spellID = GetActionInfo(actionID)
-    if Interrupts[spellID] then
+    if C_ActionBar.IsInterruptAction(actionID) then
         return true
     end
     for overlay in self.overlayPool:EnumerateActive() do
-        if overlay.spellID == spellID then
+        if overlay.actionID == actionID then
             return true
         end
     end
@@ -145,11 +158,22 @@ end
 
 function ABIHControllerMixin:CreateOverlays()
     self.overlayPool:ReleaseAll()
-    for actionButton, spellID in pairs(GetAllActionButtons()) do
-        if Interrupts[spellID] then
-            local overlay = self.overlayPool:Acquire()
-            overlay.spellID = spellID
-            overlay:Attach(actionButton)
+    if addon.db.profile.enableActionBars then
+        for actionButton, actionID in pairs(GetAllActionButtons()) do
+            if C_ActionBar.IsInterruptAction(actionID) then
+                local overlay = self.overlayPool:Acquire()
+                overlay.actionID = actionID
+                overlay:Attach(actionButton)
+            end
+        end
+    end
+    if addon.db.profile.enableCooldownManager then
+        for cdmButton, spellID in pairs(GetAllCDMButtons()) do
+            if Interrupts[spellID] then
+                local overlay = self.overlayPool:Acquire()
+                overlay.spellID = spellID
+                overlay:Attach(cdmButton)
+            end
         end
     end
 end
