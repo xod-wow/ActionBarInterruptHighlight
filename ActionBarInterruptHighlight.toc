@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120100, 16001
 ## Title: ActionBar Interrupt Highlight
 ## Notes: Highlight interrupts on action bars for target casts
 ## IconTexture: Interface\Icons\ability_kick
