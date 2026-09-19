@@ -37,6 +37,7 @@ local Interrupts = {
 }
 
 local Events = {
+    'ACTIONBAR_PAGE_CHANGED',
     'ACTIONBAR_SLOT_CHANGED',
     'PLAYER_FOCUS_CHANGED',
     'PLAYER_TARGET_CHANGED',
@@ -235,6 +236,9 @@ function ABIHControllerMixin:OnEvent(event, ...)
             self:CreateOverlays()
             self:Update('focus', 'target')
         end
+    elseif event == 'ACTIONBAR_PAGE_CHANGED' then
+        self:CreateOverlays()
+        self:Update('focus', 'target')
     elseif event == 'PLAYER_TARGET_CHANGED' then
         self:Update('target')
     elseif event == 'PLAYER_FOCUS_CHANGED' then
