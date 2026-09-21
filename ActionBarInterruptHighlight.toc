@@ -10,6 +10,6 @@
 
 embeds.xml
 
-Options.xml
+Options.lua
 Overlay.xml
 Controller.xml
