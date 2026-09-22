@@ -7,35 +7,6 @@
 
 local _, addon = ...
 
--- Note about warlocks: the interrupt pet abilities are the override spell
--- for Command Demon (119898): not the spell the pet casts, but the spell the
--- player casts to make the pet cast their spell.
---
--- These are only used for CDM, actions can use C_ActionBar.IsInterruptAction.
--- It's likely that this should be scanned from the action bars, on the
--- assumption that even if you are looking at the CDM your bar has the interrupt
--- on it.
-
-local Interrupts = {
-    [ 47528] = true,                -- Mind Freeze (Death Knight)
-    [183752] = true,                -- Disrupt (Demon Hunter)
-    [ 78675] = true,                -- Solar Beam (Druid)
-    [106839] = true,                -- Skull Bash (Druid)
-    [147362] = true,                -- Counter Shot (Hunter)
-    [187707] = true,                -- Muzzle (Hunter)
-    [  2139] = true,                -- Counterspell (Mage)
-    [116705] = true,                -- Spear Hand Strike (Monk)
-    [ 96231] = true,                -- Rebuke (Paladin)
-    [ 15487] = true,                -- Silence (Priest)
-    [  1766] = true,                -- Kick (Rogue)
-    [ 57994] = true,                -- Wind Shear (Shaman)
-    [119910] = true,                -- Spell Lock (Warlock Felhunter Pet)
-    [132409] = true,                -- Spell Lock (Warlock Fel Ravager)
-    [119914] = true,                -- Axe Toss (Warlock Felguard Pet)
-    [  6552] = true,                -- Pummel (Warrior)
-    [351338] = true,                -- Quell (Evoker)
-}
-
 local Events = {
     'ACTIONBAR_PAGE_CHANGED',
     'ACTIONBAR_SLOT_CHANGED',
@@ -117,13 +88,13 @@ end
 
 --[[------------------------------------------------------------------------]]--
 
-ABIHControllerMixin = {}
+addon.ControllerMixin = {}
 
-function ABIHControllerMixin:OnLoad()
+function addon.ControllerMixin:OnLoad()
     self:RegisterEvent('PLAYER_LOGIN')
 end
 
-function ABIHControllerMixin:Initialize()
+function addon.ControllerMixin:Initialize()
     addon.InitializeOptions()
     addon.db.RegisterCallback(self, 'OnOptionsChanged', 'OnOptionsChanged')
 
@@ -141,36 +112,61 @@ function ABIHControllerMixin:Initialize()
             self:CreateOverlays()
             self:Update('target')
         end)
+
+    self.interruptsByName = {}
+    for spellID in pairs(addon.Interrupts) do
+        -- This doesn't seem to need spell load callback, not sure why
+        local name = C_Spell.GetSpellName(spellID)
+        if name then
+            self.interruptsByName[name] = true
+        end
+    end
+end
+
+function addon.ControllerMixin:IsInterruptSpell(spellID)
+    if spellID == nil or spellID == 0 then
+        return false
+    end
+    local name = C_Spell.GetSpellName(spellID)
+    return self.interruptsByName[name] == true
 end
 
 -- This tests not only "is this an interrupt" but "was this an interrupt
 -- before and now isn't".
-function ABIHControllerMixin:IsRelevantActionID(actionID)
-    if C_ActionBar.IsInterruptAction(actionID) then
-        return true
-    end
+function addon.ControllerMixin:IsChangedActionID(actionID)
+    local spellID = C_ActionBar.GetSpell(actionID)
     for overlay in self.overlayPool:EnumerateActive() do
         if overlay.actionID == actionID then
-            return true
+            if overlay.spellID == spellID then
+                -- Already overlaying the right spell ID, no change
+                return false
+            else
+                return true
+            end
         end
+    end
+    if self:IsInterruptSpell(spellID) then
+        return true
     end
     return false
 end
 
-function ABIHControllerMixin:CreateOverlays()
+function addon.ControllerMixin:CreateOverlays()
     self.overlayPool:ReleaseAll()
     if addon.db.profile.enableActionBars then
         for actionButton, actionID in pairs(GetAllActionButtons()) do
-            if C_ActionBar.IsInterruptAction(actionID) then
+            local spellID = C_ActionBar.GetSpell(actionID)
+            if self:IsInterruptSpell(spellID) then
                 local overlay = self.overlayPool:Acquire()
                 overlay.actionID = actionID
+                overlay.spellID = spellID
                 overlay:Attach(actionButton)
             end
         end
     end
     if addon.db.profile.enableCooldownManager then
         for cdmButton, spellID in pairs(GetAllCDMButtons()) do
-            if Interrupts[spellID] then
+            if self:IsInterruptSpell(spellID) then
                 local overlay = self.overlayPool:Acquire()
                 overlay.spellID = spellID
                 overlay:Attach(cdmButton)
@@ -179,7 +175,7 @@ function ABIHControllerMixin:CreateOverlays()
     end
 end
 
-function ABIHControllerMixin:RefreshOverlays()
+function addon.ControllerMixin:RefreshOverlays()
     for overlay in self.overlayPool:EnumerateActive() do
         local unit = overlay:GetCurrentUnit()
         local state = self.state[unit]
@@ -189,7 +185,7 @@ function ABIHControllerMixin:RefreshOverlays()
    end
 end
 
-function ABIHControllerMixin:UpdateUnitState(unit)
+function addon.ControllerMixin:UpdateUnitState(unit)
     if UnitCanAttack('player', unit) then
         local name, notInterruptible, _
 
@@ -211,7 +207,7 @@ function ABIHControllerMixin:UpdateUnitState(unit)
     self.state[unit] = { false }
 end
 
-function ABIHControllerMixin:Update(...)
+function addon.ControllerMixin:Update(...)
     for i = 1, select('#', ...) do
         local unit = select(i, ...)
         self:UpdateUnitState(unit)
@@ -219,20 +215,22 @@ function ABIHControllerMixin:Update(...)
     self:RefreshOverlays()
 end
 
-function ABIHControllerMixin:OnOptionsChanged()
+function addon.ControllerMixin:OnOptionsChanged()
     self:CreateOverlays()
     self:Update('focus', 'target')
 end
 
-function ABIHControllerMixin:OnEvent(event, ...)
+function addon.ControllerMixin:OnEvent(event, ...)
     if event == 'PLAYER_LOGIN' then
         self:Initialize()
         self:CreateOverlays()
         self:Update('focus', 'target')
     elseif event == 'ACTIONBAR_SLOT_CHANGED' then
-        -- This fires CONSTANTLY when assistedcombat is on a bar
+        -- This fires CONSTANTLY for various reasons including stack updates
+        -- and assistedcombat updates.
         local actionID = ...
-        if self:IsRelevantActionID(actionID) then
+        if self:IsChangedActionID(actionID) then
+print('IsChangedActionID', actionID)
             self:CreateOverlays()
             self:Update('focus', 'target')
         end

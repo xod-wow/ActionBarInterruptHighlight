@@ -4,7 +4,10 @@
 
   <!-- Flipbook animation from ActionButtonSpellAlertTemplate -->
 
-  <Frame name="ABIHOverlayTemplate" mixin="ABIHOverlayMixin" hidden="true" virtual="true">
+  <Frame name="ABIHOverlayTemplate" hidden="true" virtual="true">S
+    <Mixins>
+      <Mixin key="OverlayMixin" source="local" />
+    </Mixins>
     <Layers>
       <Layer level="ARTWORK">
         <Texture parentKey="ProcLoopFlipbook" atlas="UI-HUD-ActionBar-Proc-Loop-Flipbook">

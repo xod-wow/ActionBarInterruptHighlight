@@ -2,7 +2,10 @@
 
   <Script file="Controller.lua"/>
 
-  <Frame name="ABIHController" mixin="ABIHControllerMixin">
+  <Frame name="ABIHController">
+    <Mixins>
+      <Mixin key="ControllerMixin" source="local" />
+    </Mixins>
     <Scripts>
       <OnLoad method="OnLoad" />
       <OnEvent method="OnEvent" />

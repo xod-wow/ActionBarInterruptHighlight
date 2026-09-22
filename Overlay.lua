@@ -60,14 +60,14 @@ end
 
 --[[------------------------------------------------------------------------]]--
 
-ABIHOverlayMixin = {}
+addon.OverlayMixin = {}
 
-function ABIHOverlayMixin:OnHide()
+function addon.OverlayMixin:OnHide()
     self:StopAnim()
     self:StopTimer()
 end
 
-function ABIHOverlayMixin:OnLoad()
+function addon.OverlayMixin:OnLoad()
     self.binding = C_DurationUtil.CreateDurationTextBinding()
     self.binding:SetFontString(self.Timer)
     self.binding:SetTextColorCurve(timerColorCurve, 0)
@@ -75,17 +75,17 @@ function ABIHOverlayMixin:OnLoad()
     self.binding:SetEnabled(false)
 end
 
-function ABIHOverlayMixin:StopAnim()
+function addon.OverlayMixin:StopAnim()
     if self.ProcLoop:IsPlaying() then
         self.ProcLoop:Stop()
     end
 end
 
-function ABIHOverlayMixin:StartAnim()
+function addon.OverlayMixin:StartAnim()
     self.ProcLoop:Play()
 end
 
-function ABIHOverlayMixin:StartTimer(duration)
+function addon.OverlayMixin:StartTimer(duration)
     if addon.db.profile.enableTimer then
         self.binding:SetDuration(duration)
         self.binding:SetEnabled(true)
@@ -93,7 +93,7 @@ function ABIHOverlayMixin:StartTimer(duration)
     end
 end
 
-function ABIHOverlayMixin:StopTimer()
+function addon.OverlayMixin:StopTimer()
     self.binding:SetEnabled(false)
     self.Timer:Hide()
 end
@@ -102,7 +102,7 @@ end
 -- would be a GetActionUnit function. This is a hack to try to figure it
 -- out in a limited fashion.
 
-function ABIHOverlayMixin:GetCurrentUnit()
+function addon.OverlayMixin:GetCurrentUnit()
     local parent = self:GetParent()
 
     if parent.action then
@@ -131,7 +131,7 @@ end
 -- cast going on, and we only make them visible with alpha if the
 -- cast is interruptible.
 
-function ABIHOverlayMixin:Update(active, notInterruptible, duration)
+function addon.OverlayMixin:Update(active, notInterruptible, duration)
     if active then
         self:StartAnim()
         self:StartTimer(duration)
@@ -142,7 +142,7 @@ function ABIHOverlayMixin:Update(active, notInterruptible, duration)
     end
 end
 
-function ABIHOverlayMixin:Attach(actionButton)
+function addon.OverlayMixin:Attach(actionButton)
     self:SetParent(actionButton)
     self:ClearAllPoints()
     self:SetPoint('CENTER')

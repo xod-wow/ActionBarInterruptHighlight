@@ -10,6 +10,8 @@
 
 embeds.xml
 
+SpellData\[Game].lua
+
 Options.lua
 Overlay.xml
 Controller.xml
