@@ -230,7 +230,6 @@ function addon.ControllerMixin:OnEvent(event, ...)
         -- and assistedcombat updates.
         local actionID = ...
         if self:IsChangedActionID(actionID) then
-print('IsChangedActionID', actionID)
             self:CreateOverlays()
             self:Update('focus', 'target')
         end
